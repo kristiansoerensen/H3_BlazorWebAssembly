@@ -1,4 +1,8 @@
 ﻿@inject NavigationManager Navigation
+@inject HttpClient _client
+@using System.Text.Json;
+@using System.Text.Json.Serialization;
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
 
 <div class="card product-item border-0 mb-4">
     <a asp-page="/Shop/Details" asp-route-id="@Product.Id">
@@ -29,10 +33,48 @@
 @code {
     [Parameter]
     public Product Product { get; set; } = new Product();
+    public string LocalStorageBasketKey { get; set; } = "basketId";
 
-    void AddToCart()
+    async Task AddToCart()
     {
-        Navigation.NavigateTo("/product/" + Product.Id);
+        int? basketId = null;
+        if (await localStorage.ContainKeyAsync(LocalStorageBasketKey) == false)
+        {
+            BasketDTO tempBasket = new BasketDTO();
+            basketId = await CreateBasket(tempBasket);
+            if (basketId == null)
+            {
+                return;
+            }
+            await localStorage.SetItemAsync<int>(LocalStorageBasketKey, (int)basketId);
+
+        }
+        if (basketId == null)
+        {
+            basketId = (int?)(await localStorage.GetItemAsync<int>(LocalStorageBasketKey));
+        }
+        if (basketId == null)
+        {
+            return;
+        }
+        var response = await _client.PostAsync($"basket/addtocart/{basketId}?productId={Product.Id}&qty=1", new StringContent(""));
+        var content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new ApplicationException(content);
+        }
+        Navigation.NavigateTo("cart");
+    }
+
+    public async Task<int?> CreateBasket(BasketDTO basket)
+    {
+        var response = await _client.PostAsJsonAsync("basket", basket);
+        var content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new ApplicationException(content);
+        }
+        return JsonSerializer.Deserialize<int>(content);
     }
 
     void NavigatoToProductDetail()

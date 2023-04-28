@@ -65,7 +65,7 @@ namespace WebAPI.Controllers
             return Ok(item.Id);
         }
         
-        [HttpPost("/addtocart/{id:int}")]
+        [HttpPost("/api/basket/addtocart/{id:int}")]
         public async Task<IActionResult> AddToCart(int id, int productId, int qty = 1)
         {
             Basket? basket = await this._context.Baskets.GetById(id);
@@ -82,7 +82,7 @@ namespace WebAPI.Controllers
             return Ok();
         }
         
-        [HttpPost("/updateqty/{id:int}")]
+        [HttpPost("/api/basket/updateqty/{id:int}")]
         public async Task<IActionResult> UpdateQty(int id, int basketItemId, int qty = 1)
         {
             Basket? basket = await this._context.Baskets.GetById(id);

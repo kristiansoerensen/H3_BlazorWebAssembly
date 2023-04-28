@@ -1,5 +1,5 @@
 ﻿using DataLayer.Data;
-using DataLayer.DTOs;
+using DataLayer.Entities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using DataLayer.ExtensionMethods;
@@ -20,13 +20,18 @@ namespace WebAPI.Controllers
         }
 
         [HttpGet]
-        public IActionResult Get([FromQuery] int PageSize, [FromQuery] int CurrentPage)
+        public IActionResult Get([FromQuery] int? basketId)
         {
+            
             var query = _context.BasketItems.GetAll();
-            List<BasketItemDTO> items = query.Page(CurrentPage, PageSize)
+            if (basketId != null)
+            {
+                query = query.Where(x => x.BasketId == basketId);
+            }
+            List<BasketItem> items = query
                 .Include(x => x.Basket)
                 .Include(x => x.Product)
-                .ToDTOs()
+                .ThenInclude(x => x.Images)
                 .ToList();
             return Ok(items);
         }

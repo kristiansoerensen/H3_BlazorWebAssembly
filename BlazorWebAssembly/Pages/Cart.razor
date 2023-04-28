@@ -1,0 +1,185 @@
+﻿@page "/cart"
+
+@inject NavigationManager Navigation
+@inject HttpClient _client
+@using System.Text.Json;
+@using System.Text.Json.Serialization;
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+
+<!-- Cart Start -->
+<div class="container-fluid pt-5">
+    <a asp-page="/Shop/Index" class="btn btn-block btn-info my-3 py-3">Continue shopping</a>
+    <div class="row px-xl-5">
+        <div class="col-lg-8 table-responsive mb-5">
+            <table class="table table-bordered text-center mb-0">
+                <thead class="bg-secondary text-dark">
+                    <tr>
+                        <th>Products</th>
+                        <th>Price</th>
+                        <th>Quantity</th>
+                        <th>Total</th>
+                        <th>Update</th>
+                        <th>Remove</th>
+                    </tr>
+                </thead>
+                <tbody class="align-middle">
+                    @foreach (var basketItem in BasketItems)
+                    {
+                        <tr>
+                            <td class="align-middle">
+                                @if (basketItem.Product?.Images != null && basketItem.Product?.Images?.FirstOrDefault() != null)
+                                {
+                                    <img style="width: 50px;" src="@("/Images/" + basketItem.Product?.Images?.FirstOrDefault()?.Filename)" alt="">
+                                }
+                                else
+                                {
+                                    <img src="/img/placeholder.png" alt="" style="width: 50px;">
+                                }
+                                @basketItem.Product?.Name
+                            </td>
+                            <td class="align-middle">$@basketItem.Product?.Price</td>
+                            <td class="align-middle">
+                                <form action="/Shop/Cart/Index" method="post" id="update-qty">
+                                    <input type="hidden" name="basketItemId" value="@basketItem.Id" />
+                                    <div class="input-group quantity mx-auto" style="width: 100px;">
+                                        <div class="input-group-btn">
+                                            <button type="button" class="btn btn-sm btn-primary btn-minus">
+                                                <i class="fa fa-minus"></i>
+                                            </button>
+                                        </div>
+                                        <input type="text" name="qty" class="form-control form-control-sm bg-secondary text-center" value="@basketItem.QTY">
+                                        <div class="input-group-btn">
+                                            <button type="button" class="btn btn-sm btn-primary btn-plus">
+                                                <i class="fa fa-plus"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </td>
+                            <td class="align-middle">$@(basketItem.Product?.Price * @basketItem.QTY)</td>
+                            <td class="align-middle"><button onclick="$('#update-qty').submit()" type="submit" class="btn btn-sm btn-primary"><i class="fa fa-refresh"></i></button></td>
+                            <td class="align-middle">
+                                <form action="/Shop/Cart/Remove" method="post">
+                                    <input name="basketItemId" type="hidden" value="@basketItem.Id" />
+                                    <button type="submit" class="btn btn-sm btn-primary"><i class="fa fa-times"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="col-lg-4">
+            @*<form class="mb-5" action="">
+            <div class="input-group">
+            <input type="text" class="form-control p-4" placeholder="Coupon Code">
+            <div class="input-group-append">
+            <button class="btn btn-primary">Apply Coupon</button>
+            </div>
+            </div>
+            </form>*@
+            <div class="card border-secondary mb-5">
+                <div class="card-header bg-secondary border-0">
+                    <h4 class="font-weight-semi-bold m-0">Cart Summary</h4>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-3 pt-1">
+                        <h6 class="font-weight-medium">Subtotal</h6>
+                        <h6 class="font-weight-medium">$@basket?.Total</h6>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <h6 class="font-weight-medium">Shipping</h6>
+                        <h6 class="font-weight-medium">$0</h6>
+                    </div>
+                </div>
+                <div class="card-footer border-secondary bg-transparent">
+                    <div class="d-flex justify-content-between mt-2">
+                        <h5 class="font-weight-bold">Total</h5>
+                        <h5 class="font-weight-bold">$@basket?.Total</h5>
+                    </div>
+                    <a asp-page="/Shop/Checkout/Index" class="btn btn-block btn-primary my-3 py-3">Proceed To Checkout</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Cart End -->
+
+@code {
+    public string LocalStorageBasketKey { get; set; } = "basketId";
+
+    public List<BasketItem> BasketItems { get; set; } = new List<BasketItem>();
+    public Basket basket { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        int? basketId = null;
+        if (await localStorage.ContainKeyAsync(LocalStorageBasketKey) == false)
+        {
+            BasketDTO tempBasket = new BasketDTO();
+            basketId = await CreateBasket(tempBasket);
+            if (basketId == null)
+            {
+                return;
+            }
+            await localStorage.SetItemAsync<int>(LocalStorageBasketKey, (int)basketId);
+
+        }
+        if (basketId == null)
+        {
+            basketId = (int?)(await localStorage.GetItemAsync<int>(LocalStorageBasketKey));
+        }
+        if (basketId == null)
+        {
+            return;
+        }
+        basket = await GetBasket((int)basketId);
+
+        BasketItems = await GetBasketItems(basket.Id);
+    }
+
+    public async Task<Basket> GetBasket(int id, string queryString = "")
+    {
+        var response = await _client.GetAsync("basket/" + id + "?" + queryString);
+        var content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new ApplicationException(content);
+        }
+        var item = JsonSerializer.Deserialize<Basket>(content, new JsonSerializerOptions
+            {
+                ReferenceHandler = ReferenceHandler.Preserve,
+                PropertyNameCaseInsensitive = true
+            });
+        return item != null ? item : new Basket();
+    }
+    
+    public async Task<List<BasketItem>> GetBasketItems(int basketId)
+    {
+        var response = await _client.GetAsync("basketitems?basketId=" + basketId);
+        var content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new ApplicationException(content);
+        }
+        var item = JsonSerializer.Deserialize<List<BasketItem>>(content, new JsonSerializerOptions
+            {
+                ReferenceHandler = ReferenceHandler.Preserve,
+                PropertyNameCaseInsensitive = true
+            });
+        return item != null ? item : new List<BasketItem>();
+    }
+
+    public async Task<int?> CreateBasket(BasketDTO basket)
+    {
+        var response = await _client.PostAsJsonAsync("basket", basket);
+        var content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new ApplicationException(content);
+        }
+        return JsonSerializer.Deserialize<int>(content);
+    }
+}

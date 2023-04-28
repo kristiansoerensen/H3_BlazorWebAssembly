@@ -4,9 +4,12 @@
 @inject HttpClient _client
 @using System.Text.Json;
 @using System.Text.Json.Serialization;
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
 
 <!-- Shop Detail Start -->
 <div class="container-fluid py-5">
+    <button class="btn btn-primary" @onclick="() => EditProduct()">Edit</button>
+    <button class="btn btn-danger" @onclick="() => DeleteProduct()">Delete</button>
     <div class="row px-xl-5">
         <div class="col-lg-5 pb-5">
             <div id="product-carousel" class="carousel slide" data-bs-ride="carousel">
@@ -199,15 +202,53 @@
     public Product? Product { get; set; } = default!;
     public PagedProducts PagedProducts { get; set; } = new PagedProducts();
 
+    public string LocalStorageBasketKey { get; set; } = "basketId";
+
     void UpdataQTY(int val)
     {
         QTY += val;
         StateHasChanged();
     }
 
-    void AddToCart()
+    public void EditProduct()
     {
-        Navigation.NavigateTo("counter");
+        Navigation.NavigateTo("product/edit/" + Id);
+    }
+    
+    public void DeleteProduct()
+    {
+        Navigation.NavigateTo("product/delete/" + Id);
+    }
+
+    async Task AddToCart()
+    {
+        int? basketId = null;
+        if (await localStorage.ContainKeyAsync(LocalStorageBasketKey) == false)
+        {
+            BasketDTO tempBasket = new BasketDTO();
+            basketId = await CreateBasket(tempBasket);
+            if (basketId == null)
+            {
+                return;
+            }
+            await localStorage.SetItemAsync<int>(LocalStorageBasketKey, (int)basketId);
+
+        }
+        if (basketId == null)
+        {
+            basketId = (int?)(await localStorage.GetItemAsync<int>(LocalStorageBasketKey));
+        }
+        if (basketId == null)
+        {
+            return;
+        }
+        var response = await _client.PostAsync($"basket/addtocart/{basketId}?productId={Id}&qty={QTY}", new StringContent(""));
+        var content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new ApplicationException(content);
+        }
+        Navigation.NavigateTo("cart");
     }
 
     protected override async Task OnInitializedAsync()
@@ -249,5 +290,16 @@
                 PropertyNameCaseInsensitive = true
             });
         return Product;
+    }
+
+    public async Task<int?> CreateBasket(BasketDTO basket)
+    {
+        var response = await _client.PostAsJsonAsync("basket", basket);
+        var content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new ApplicationException(content);
+        }
+        return JsonSerializer.Deserialize<int>(content);
     }
 }
