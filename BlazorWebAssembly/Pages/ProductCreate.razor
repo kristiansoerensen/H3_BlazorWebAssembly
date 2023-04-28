@@ -1,0 +1,53 @@
+﻿@page "/product/create"
+
+@inject NavigationManager Navigation
+@inject HttpClient _client
+@using System.Text.Json;
+@using System.Text.Json.Serialization;
+
+<div class="container py-5">
+    <EditForm Model="@Product" OnValidSubmit="@HandleSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <label>
+            Name
+            <InputText @bind-Value="Product.Name" />
+        </label>
+        <label>
+            Description
+            <InputTextArea @bind-Value="Product.Description" />
+        </label>
+        <label>
+            Price
+            <InputNumber @bind-Value="Product.Price" />
+        </label>
+        <label>
+            SKU
+            <InputText @bind-Value="Product.SKU" />
+        </label>
+        <button type="submit" class="btn btn-primary">Create</button>
+    </EditForm>
+</div>
+
+@code {
+    public Product Product { get; set; } = new Product();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+    }
+    private async Task HandleSubmit()
+    {
+        //var jsonStr = JsonSerializer.Serialize<ProductDTO>(new List<Product> { Product }.ToDTOs().FirstOrDefault());
+        //Console.WriteLine(jsonStr);
+        var response = await _client.PostAsJsonAsync("product", new List<Product> { Product }.ToDTOs().FirstOrDefault());
+        var content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new ApplicationException(content);
+        }
+        var productId = JsonSerializer.Deserialize<int>(content);
+        Navigation.NavigateTo("product/edit/" + productId);
+    }
+}

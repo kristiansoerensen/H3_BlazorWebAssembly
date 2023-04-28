@@ -1,0 +1,52 @@
+﻿@page "/product/delete/{Id:int}"
+
+@inject NavigationManager Navigation
+@inject HttpClient _client
+@using System.Text.Json;
+@using System.Text.Json.Serialization;
+
+<div class="container py-5">
+    <h3>@Product.Name</h3>
+    <p>Click delete to delete the product!</p>
+    <button @onclick="() => OnDelete()" class="btn btn-danger">Delete!</button>
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+    public Product Product { get; set; } = new Product();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Product = await GetProduct(Id);
+    }
+    private async Task OnDelete()
+    {
+        //var jsonStr = JsonSerializer.Serialize<ProductDTO>(new List<Product> { Product }.ToDTOs().FirstOrDefault());
+        //Console.WriteLine(jsonStr);
+        var response = await _client.DeleteAsync("product/" + Id);
+        var content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new ApplicationException(content);
+        }
+        Navigation.NavigateTo("/");
+    }
+
+    public async Task<Product?> GetProduct(int id, string queryString = "")
+    {
+        var response = await _client.GetAsync("product/" + id + "?" + queryString);
+        var content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new ApplicationException(content);
+        }
+        var Product = JsonSerializer.Deserialize<Product>(content, new JsonSerializerOptions
+            {
+                ReferenceHandler = ReferenceHandler.Preserve,
+                PropertyNameCaseInsensitive = true
+            });
+        return Product;
+    }
+}

@@ -60,7 +60,6 @@ namespace WebAPI.Controllers
                 return NoContent();
             }
             Product product = productDTO.FromDTO();
-            product.Images = this._context.Images.GetAll().Where(i => productDTO.ImageIds.Contains(i.Id)).ToList();
             this._context.Products.Update(product);
             await this._context.CommitAsync();
             return Ok();

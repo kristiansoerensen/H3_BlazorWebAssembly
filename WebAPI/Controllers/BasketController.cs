@@ -23,14 +23,13 @@ namespace WebAPI.Controllers
         [HttpGet("{id}")]
         public IActionResult Get(int id)
         {
-            BasketDTO? DTO = this._context.Baskets
+            Basket? DTO = this._context.Baskets
                 .GetAll().Where(x => x.Id == id)
                 .Include(x => x.User)
                 .Include(x => x.CartLines)
                 .Include(x => x.BillingAddress)
                 .Include(x => x.ShippingAddress)
                 .Include(x => x.PaymentProvider)
-                .ToDTOs()
                 .FirstOrDefault();
             if (DTO == null)
             {
@@ -64,6 +63,40 @@ namespace WebAPI.Controllers
             await this._context.Baskets.Add(item);
             await this._context.CommitAsync();
             return Ok(item.Id);
+        }
+        
+        [HttpPost("/addtocart/{id:int}")]
+        public async Task<IActionResult> AddToCart(int id, int productId, int qty = 1)
+        {
+            Basket? basket = await this._context.Baskets.GetById(id);
+            if (basket == null)
+            {
+                return NotFound();
+            }
+            Product? product = await this._context.Products.GetById(productId);
+            if (product == null)
+            {
+                return NotFound();
+            }
+            this._context.Baskets.AddToBasket(basket, product, qty);
+            return Ok();
+        }
+        
+        [HttpPost("/updateqty/{id:int}")]
+        public async Task<IActionResult> UpdateQty(int id, int basketItemId, int qty = 1)
+        {
+            Basket? basket = await this._context.Baskets.GetById(id);
+            if (basket == null)
+            {
+                return NotFound();
+            }
+            BasketItem? basketItem = await this._context.BasketItems.GetById(basketItemId);
+            if (basketItem == null)
+            {
+                return NotFound();
+            }
+            this._context.Baskets.UpdateQty(basket, basketItem, qty);
+            return Ok();
         }
 
         // PUT api/<ProductController>/5

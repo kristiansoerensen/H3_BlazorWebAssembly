@@ -1,5 +1,5 @@
 ﻿using DataLayer.Data;
-using DataLayer.DTOs;
+using DataLayer.Entities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -23,13 +23,12 @@ namespace WebAPI.Controllers
         public IActionResult Get([FromQuery] int basketId)
         {
             var query = _context.Baskets.GetAll();
-            List<BasketDTO> items = query
+            List<Basket> items = query
                 .Include(x => x.User)
                 .Include(x => x.CartLines)
                 .Include(x => x.BillingAddress)
                 .Include(x => x.ShippingAddress)
                 .Include(x => x.PaymentProvider)
-                .ToDTOs()
                 .ToList();
             return Ok(items);
         }
