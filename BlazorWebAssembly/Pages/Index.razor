@@ -1,0 +1,224 @@
+﻿@page "/"
+
+@inject HttpClient _client
+@using System.Text.Json;
+@using System.Text.Json.Serialization;
+
+<!-- Shop Start -->
+<div class="container-fluid pt-5">
+    <div class="row px-xl-5">
+        <!-- Shop Sidebar Start -->
+        <div class="col-lg-3 col-md-12">
+            <!-- Price Start -->
+            <div class="border-bottom mb-4 pb-4">
+                <h5 class="font-weight-semi-bold mb-4">Filter by category</h5>
+                <div class="custom-control custom-checkbox d-flex align-items-center justify-content-between mb-3">
+                    <input type="checkbox" class="custom-control-input disabled" disabled checked id="price-all">
+                    <label class="custom-control-label" for="price-all">All Price</label>
+                </div>
+                @foreach (var cnt in CategoryIds)
+                {
+                    <div class="custom-control custom-checkbox d-flex align-items-center justify-content-between mb-3">
+                        <Input type="checkbox" @onchange="() => UpdateSelectedCategories(cnt)" id="category-@cnt.value" class="custom-control-input" />
+                        @*else
+                        {
+                            <Input type="checkbox" @bind="CategoryIds" id="category-@cnt.value" @onchange="@(() => UpdateSelectedCategories(cnt))" class="custom-control-input" />
+                        }*@
+                        <label class="custom-control-label" for="category-@cnt.value">@cnt.Text</label>
+                    </div>
+                    @*<option value="@cnt.Id">@cnt.Name</option>*@
+                }
+            </div>
+            <!-- Price End -->
+        </div>
+        <!-- Shop Sidebar End -->
+        <!-- Shop Product Start -->
+        <div class="col-lg-9 col-md-12">
+            <div class="row pb-3">
+                <div class="col-12 pb-1">
+                    <div class="d-flex align-items-center justify-content-between mb-4">
+                        <div class="input-group">
+                            <input type="text" class="form-control" @bind-value="SearchTerm" @oninput="OnInput" placeholder="Search by name">
+                            <div class="input-group-append">
+                                <span class="input-group-text bg-transparent text-primary">
+                                    <i class="fa fa-search"></i>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="dropdown ml-4">
+                            <select asp-for="CategoryIds" asp-items="Model.Categories" class="form-control form-select-multi" multiple="multiple" onchange="this.form.submit()"></select>
+                        </div>
+                        <div class="dropdown ml-4">
+                            <select asp-for="OrderBy" asp-items="Model.OrderByList" class="form-control" onchange="this.form.submit()"></select>
+                        </div>
+                        <div class="dropdown ml-4">
+                            <input type="text" class="form-control text-center" asp-for="PageSize" onfocusout="this.form.submit()" />
+                        </div>
+                    </div>
+                </div>
+                @foreach (var product in PagedProducts.Products)
+                {
+                    <div class="col-lg-4 col-md-6 col-sm-12 pb-1">
+                        <ProductComponent Product="@product" />
+                    </div>
+                }
+                <div class="col-12 pb-1">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination justify-content-center mb-3">
+                            @if (PagedProducts.CurrentPage >= 1)
+                            {
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#" aria-label="Previous">
+                                        <span aria-hidden="true">&laquo;</span>
+                                        <span class="sr-only">Previous</span>
+                                    </a>
+                                </li>
+                            }
+                            else
+                            {
+                                <li class="page-item">
+                                    <span class="page-link" @onclick="() => ChangePage(CurrentPage - 1)" aria-label="Previous">
+                                        <span aria-hidden="true">&laquo;</span>
+                                        <span class="sr-only">Previous</span>
+                                    </span>
+                                </li>
+                            }
+                            @for (int i = 1; i <= PagedProducts.NumOfPages; i++)
+                            {
+                                var tempint = i;
+                                if (i == PagedProducts.CurrentPage)
+                                {
+                                    <li class="page-item active"><span class="page-link" id="pagination-@i" @onclick="() => ChangePage(tempint)">@i</span></li>
+                                }
+                                else
+                                {
+                                    <li class="page-item"><span class="page-link" id="pagination-@i" @onclick="() => ChangePage(tempint)">@i</span></li>
+                                }
+                            }
+                            @if (PagedProducts.CurrentPage <= PagedProducts.NumOfPages)
+                            {
+                                <li class="page-item">
+                                    <span class="page-link" @onclick="() => ChangePage(CurrentPage + 1)" aria-label="Next">
+                                        <span aria-hidden="true">&raquo;</span>
+                                        <span class="sr-only">Next</span>
+                                    </span>
+                                </li>
+                            }
+                            else
+                            {
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#" aria-label="Next">
+                                        <span aria-hidden="true">&raquo;</span>
+                                        <span class="sr-only">Next</span>
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+        <!-- Shop Product End -->
+    </div>
+</div>
+<!-- Shop End -->
+@code {
+    public PagedProducts PagedProducts { get; set; } = new PagedProducts();
+    public PagedCategories PagedCategories { get; set; } = new PagedCategories();
+    private List<MultiSelect> CategoryIds = new List<MultiSelect>();
+    [Parameter]
+    public string? SearchTerm { get; set; } = "";
+    public int CurrentPage { get; set; }
+
+    public async Task OnInput(Microsoft.AspNetCore.Components.ChangeEventArgs args)
+    {
+        this.SearchTerm = args?.Value?.ToString();
+        await UpdateProducts();
+    }
+
+    public async Task ChangePage(int pageNum)
+    {
+        this.CurrentPage = pageNum > CurrentPage || pageNum < CurrentPage ? pageNum : CurrentPage;
+        await UpdateProducts();
+    }
+
+    async Task UpdateSelectedCategories(MultiSelect categoryId)
+    {
+        categoryId.Selected = !categoryId.Selected;
+        Console.WriteLine("42342222442");
+        await UpdateProducts();
+    }
+
+    async Task UpdateProducts()
+    {
+        string? queryStr = GetProductQueryString();
+        PagedProducts = await GetPagedProducts(queryStr != null ? queryStr : "");
+        Console.WriteLine(queryStr);
+        StateHasChanged();
+    }
+
+    string? GetProductQueryString()
+    {
+        System.Collections.Specialized.NameValueCollection queryString = System.Web.HttpUtility.ParseQueryString(string.Empty);
+        queryString.Add("PageSize", PagedProducts.PageSize.ToString());
+        queryString.Add("SearchTerm", SearchTerm);
+        queryString.Add("CurrentPage", CurrentPage > 0 ? CurrentPage.ToString() : "1");
+        foreach (var item in CategoryIds.Where(x => x.Selected == true))
+        {
+            queryString.Add("CategoryIds", item.value);
+        }
+        return queryString.ToString();
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        System.Collections.Specialized.NameValueCollection queryString = System.Web.HttpUtility.ParseQueryString(string.Empty);
+        queryString.Add("PageSize", PagedProducts.PageSize.ToString());
+        queryString.Add("CurrentPage", PagedProducts.CurrentPage.ToString());
+        string? queryStr = queryString.ToString();
+        PagedProducts = await GetPagedProducts(queryStr != null ? queryStr : "");
+        queryStr = GetProductQueryString();
+        PagedCategories = await GetPagedCategories(queryStr != null ? queryStr : "");
+
+        foreach (var item in PagedCategories.Categories)
+        {
+            CategoryIds.Add(new MultiSelect { value = item.Id.ToString(), Text = item.Name });
+        }
+    }
+
+    public async Task<PagedProducts> GetPagedProducts(string queryString = "")
+    {
+        var response = await _client.GetAsync("products?" + queryString);
+        var content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new ApplicationException(content);
+        }
+        Console.WriteLine(content);
+        var PagedProducts = JsonSerializer.Deserialize<PagedProducts>(content, new JsonSerializerOptions
+            {
+                ReferenceHandler = ReferenceHandler.Preserve,
+                PropertyNameCaseInsensitive = true
+            });
+        return PagedProducts != null ? PagedProducts : new PagedProducts();
+    }
+
+    public async Task<PagedCategories> GetPagedCategories(string queryString = "")
+    {
+        var response = await _client.GetAsync("categories?" + queryString);
+        var content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new ApplicationException(content);
+        }
+        Console.WriteLine(content);
+        var PagedCategories = JsonSerializer.Deserialize<PagedCategories>(content, new JsonSerializerOptions
+            {
+                ReferenceHandler = ReferenceHandler.Preserve,
+                PropertyNameCaseInsensitive = true
+            });
+        return PagedCategories != null ? PagedCategories : new PagedCategories();
+    }
+}
