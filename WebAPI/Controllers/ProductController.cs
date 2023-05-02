@@ -24,11 +24,10 @@ namespace WebAPI.Controllers
         [HttpGet("{id}")]
         public IActionResult Get(int id)
         {
-            ProductDTO? DTO = this._context.Products
+            Product? DTO = this._context.Products
                 .GetAll().Where(x => x.Id == id)
                 .Include(p => p.ProductCategories)
                 .Include(p => p.Images)
-                .ToDTOs()
                 .FirstOrDefault();
             if (DTO == null)
             {

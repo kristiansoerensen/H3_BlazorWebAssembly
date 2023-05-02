@@ -59,10 +59,11 @@
                             <td class="align-middle">$@(basketItem.Product?.Price * @basketItem.QTY)</td>
                             <td class="align-middle"><button onclick="$('#update-qty').submit()" type="submit" class="btn btn-sm btn-primary"><i class="fa fa-refresh"></i></button></td>
                             <td class="align-middle">
-                                <form action="/Shop/Cart/Remove" method="post">
-                                    <input name="basketItemId" type="hidden" value="@basketItem.Id" />
-                                    <button type="submit" class="btn btn-sm btn-primary"><i class="fa fa-times"></i></button>
-                                </form>
+                                <input name="basketItemId" type="hidden" value="@basketItem.Id" />
+                                @{
+                                    var basketItemId = basketItem.Id;
+                                }
+                                <button type="button" @onclick="() => OnDeleteBasketItem(basketItemId)" class="btn btn-sm btn-primary"><i class="fa fa-times"></i></button>
                             </td>
                         </tr>
                     }
@@ -155,7 +156,7 @@
             });
         return item != null ? item : new Basket();
     }
-    
+
     public async Task<List<BasketItem>> GetBasketItems(int basketId)
     {
         var response = await _client.GetAsync("basketitems?basketId=" + basketId);
@@ -181,5 +182,19 @@
             throw new ApplicationException(content);
         }
         return JsonSerializer.Deserialize<int>(content);
+    }
+
+    private async Task OnDeleteBasketItem(int Id)
+    {
+        //var jsonStr = JsonSerializer.Serialize<ProductDTO>(new List<Product> { Product }.ToDTOs().FirstOrDefault());
+        //Console.WriteLine(jsonStr);
+        var response = await _client.DeleteAsync("basketitem/" + Id);
+        var content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new ApplicationException(content);
+        }
+        BasketItems = await GetBasketItems(basket.Id);
+        StateHasChanged();
     }
 }

@@ -19,7 +19,7 @@
                         @foreach (var it in Product.Images.Select((x, i) => new { Value = x, Index = i }))
                         {
                             <div class="carousel-item @(it.Index == 0 ? "active" : "")">
-                                <img class="w-100 h-100" src="@("/Images/" + it.Value.Filename)" alt="Image">
+                                <img class="w-100 h-100" src="https://localhost:7043/api/image/@it.Value.Id" alt="Image">
                             </div>
                         }
                     }

@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using DataLayer.ExtensionMethods;
 using DataLayer.Entities;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting;
 
 namespace WebAPI.Controllers
 {
@@ -14,10 +16,12 @@ namespace WebAPI.Controllers
     {
         private readonly IDataContext _context;
         private readonly ILogger<ImageController> _logger;
-        public ImageController(IDataContext context, ILogger<ImageController> logger)
+        private readonly IWebHostEnvironment _webHostEnvironment;
+        public ImageController(IDataContext context, ILogger<ImageController> logger, IWebHostEnvironment webHostEnvironment)
         {
             _context = context;
             _logger = logger;
+            _webHostEnvironment = webHostEnvironment;
         }
 
         [HttpGet("{id}")]
@@ -33,7 +37,10 @@ namespace WebAPI.Controllers
             {
                 return NotFound();
             }
-            return Ok(DTO);
+            string webRootPath = _webHostEnvironment.ContentRootPath;
+            _logger.LogInformation(webRootPath + "/Images/" + DTO.Filename);
+            Byte[] b = System.IO.File.ReadAllBytes(webRootPath + "/Images/" + DTO.Filename);
+            return File(b, "image/jpeg");
         }
 
         // DELETE api/<ProductController>/5
