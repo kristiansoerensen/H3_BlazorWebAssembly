@@ -5,10 +5,12 @@
 @using System.Text.Json;
 @using System.Text.Json.Serialization;
 @inject Blazored.LocalStorage.ILocalStorageService localStorage
+@inject IJSRuntime JS
+
 
 <!-- Cart Start -->
 <div class="container-fluid pt-5">
-    <a asp-page="/Shop/Index" class="btn btn-block btn-info my-3 py-3">Continue shopping</a>
+    <button type="button" @onclick="@(() => Navigation.NavigateTo("/"))" class="btn btn-block btn-info my-3 py-3">Continue shopping</button>
     <div class="row px-xl-5">
         <div class="col-lg-8 table-responsive mb-5">
             <table class="table table-bordered text-center mb-0">
@@ -29,7 +31,7 @@
                             <td class="align-middle">
                                 @if (basketItem.Product?.Images != null && basketItem.Product?.Images?.FirstOrDefault() != null)
                                 {
-                                    <img style="width: 50px;" src="@("/Images/" + basketItem.Product?.Images?.FirstOrDefault()?.Filename)" alt="">
+                                    <img style="width: 50px;" src="https://localhost:7043/api/image/@basketItem.Product?.Images?.FirstOrDefault()?.Id" alt="">
                                 }
                                 else
                                 {
@@ -98,7 +100,7 @@
                         <h5 class="font-weight-bold">Total</h5>
                         <h5 class="font-weight-bold">$@basket?.Total</h5>
                     </div>
-                    <a asp-page="/Shop/Checkout/Index" class="btn btn-block btn-primary my-3 py-3">Proceed To Checkout</a>
+                    <a @onclick="@(() => Navigation.NavigateTo("/checkout"))" class="btn btn-block btn-primary my-3 py-3">Proceed To Checkout</a>
                 </div>
             </div>
         </div>
@@ -139,6 +141,7 @@
         basket = await GetBasket((int)basketId);
 
         BasketItems = await GetBasketItems(basket.Id);
+        await UpdateCartCount();
     }
 
     public async Task<Basket> GetBasket(int id, string queryString = "")
@@ -184,6 +187,11 @@
         return JsonSerializer.Deserialize<int>(content);
     }
 
+    public async Task UpdateCartCount()
+    {
+        await JS.InvokeVoidAsync("updateCartCount", BasketItems.Count());
+    }
+
     private async Task OnDeleteBasketItem(int Id)
     {
         //var jsonStr = JsonSerializer.Serialize<ProductDTO>(new List<Product> { Product }.ToDTOs().FirstOrDefault());
@@ -195,6 +203,7 @@
             throw new ApplicationException(content);
         }
         BasketItems = await GetBasketItems(basket.Id);
+        await UpdateCartCount();
         StateHasChanged();
     }
 }

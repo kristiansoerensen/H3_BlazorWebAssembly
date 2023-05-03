@@ -1,9 +1,8 @@
-﻿@page "/product/create"
-
-@inject NavigationManager Navigation
+﻿@inject NavigationManager Navigation
 @inject HttpClient _client
 @using System.Text.Json;
 @using System.Text.Json.Serialization;
+@inject IToastService toastService
 
 <div class="container py-5">
     <EditForm Model="@Product" OnValidSubmit="@HandleSubmit">
@@ -33,6 +32,10 @@
 @code {
     public Product Product { get; set; } = new Product();
 
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; } = default!;
+
+    private async Task Close() => await BlazoredModal.CloseAsync(ModalResult.Ok());
+
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -45,9 +48,10 @@
         var content = await response.Content.ReadAsStringAsync();
         if (!response.IsSuccessStatusCode)
         {
+            toastService.ShowError("Error on creation");
             throw new ApplicationException(content);
         }
-        var productId = JsonSerializer.Deserialize<int>(content);
-        Navigation.NavigateTo("product/edit/" + productId);
+        toastService.ShowSuccess("Product successfully created!");
+        await Close();
     }
 }

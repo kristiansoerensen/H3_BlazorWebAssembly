@@ -6,6 +6,7 @@
 @using System.Text.Json.Serialization;
 @inject Blazored.LocalStorage.ILocalStorageService localStorage
 
+
 <!-- Shop Detail Start -->
 <div class="container-fluid py-5">
     <button class="btn btn-primary" @onclick="() => EditProduct()">Edit</button>
@@ -201,6 +202,7 @@
     public int QTY { get; set; } = 1;
     public Product? Product { get; set; } = default!;
     public PagedProducts PagedProducts { get; set; } = new PagedProducts();
+    [CascadingParameter] public IModalService Modal { get; set; }
 
     public string LocalStorageBasketKey { get; set; } = "basketId";
 
@@ -210,14 +212,32 @@
         StateHasChanged();
     }
 
-    public void EditProduct()
+    public async Task EditProduct()
     {
-        Navigation.NavigateTo("product/edit/" + Id);
+        var parameters = new ModalParameters().Add(nameof(ProductEdit.Id), Id);
+        var editModal = Modal.Show<ProductEdit>("Edit Product", parameters);
+        var result = await editModal.Result;
+
+        if (result.Confirmed)
+        {
+            Product = await GetProduct(Id);
+            StateHasChanged();
+        }
+        //Navigation.NavigateTo("/product/" + Id, true);
+
+        //Navigation.NavigateTo("product/edit/" + Id);
     }
     
-    public void DeleteProduct()
+    public async Task DeleteProduct()
     {
-        Navigation.NavigateTo("product/delete/" + Id);
+        var parameters = new ModalParameters().Add(nameof(ProductDelete.Id), Id);
+        var deleteModal = Modal.Show<ProductDelete>("Delete Product", parameters);
+        var result = await deleteModal.Result;
+
+        if (result.Confirmed)
+        {
+            Navigation.NavigateTo("/");
+        }
     }
 
     async Task AddToCart()

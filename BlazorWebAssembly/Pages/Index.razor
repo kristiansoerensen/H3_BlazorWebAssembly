@@ -6,6 +6,7 @@
 
 <!-- Shop Start -->
 <div class="container-fluid pt-5">
+    <button class="btn btn-primary" @onclick="() => CreateProduct()">Create product</button>
     <div class="row px-xl-5">
         <!-- Shop Sidebar Start -->
         <div class="col-lg-3 col-md-12">
@@ -129,6 +130,19 @@
     [Parameter]
     public string? SearchTerm { get; set; } = "";
     public int CurrentPage { get; set; }
+    [CascadingParameter] public IModalService Modal { get; set; }
+
+    public async Task CreateProduct()
+    {
+        var editModal = Modal.Show<ProductCreate>("Create Product...");
+        var result = await editModal.Result;
+
+        if (result.Confirmed)
+        {
+            await DoInitialize();
+            StateHasChanged();
+        }
+    }
 
     public async Task OnInput(Microsoft.AspNetCore.Components.ChangeEventArgs args)
     {
@@ -145,7 +159,6 @@
     async Task UpdateSelectedCategories(MultiSelect categoryId)
     {
         categoryId.Selected = !categoryId.Selected;
-        Console.WriteLine("42342222442");
         await UpdateProducts();
     }
 
@@ -174,6 +187,11 @@
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
+        await DoInitialize();
+    }
+
+    public async Task DoInitialize()
+    {
         System.Collections.Specialized.NameValueCollection queryString = System.Web.HttpUtility.ParseQueryString(string.Empty);
         queryString.Add("PageSize", PagedProducts.PageSize.ToString());
         queryString.Add("CurrentPage", PagedProducts.CurrentPage.ToString());

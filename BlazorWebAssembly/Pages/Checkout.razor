@@ -1,0 +1,247 @@
+﻿@page "/checkout"
+
+@inject NavigationManager Navigation
+@inject HttpClient _client
+@using System.Text.Json;
+@using System.Text.Json.Serialization;
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@inject IToastService toastService
+@inject IJSRuntime JS
+
+<!-- Checkout Start -->
+<div class="container-fluid pt-5">
+    <EditForm Model="@BillingAddress" OnValidSubmit="@HandleSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="row px-xl-5">
+            <div class="col-lg-8">
+                <div class="mb-4">
+                    <h4 class="font-weight-semi-bold mb-4">Billing Address</h4>
+                    <div class="row">
+                        <div class="col-md-6 form-group">
+                            <label>First Name</label>
+                            <InputText @bind-Value="BillingAddress.FirstName" class="form-control" placeholder="John" required />
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label>Last Name</label>
+                            <InputText @bind-Value="BillingAddress.LastName" class="form-control" placeholder="Doe" required />
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label>E-mail</label>
+                            <InputText @bind-Value="BillingAddress.Email" type="email" class="form-control" placeholder="example@email.com" required />
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label>Mobile No</label>
+                            <InputText @bind-Value="BillingAddress.Mobile" class="form-control" required placeholder="+45 88 88 88 88" />
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label>Address Line 1</label>
+                            <InputText @bind-Value="BillingAddress.Street" class="form-control" required placeholder="Mongolvej 69" />
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label>Address Line 2</label>
+                            <InputText @bind-Value="BillingAddress.Street2" class="form-control" placeholder="Mongolvej 69" />
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label>Country</label>
+                            <InputSelect @bind-Value="BillingAddress.CountryId" >
+                                @foreach (var country in Countries)
+                                {
+                                    <option value="@country.Id">@country.Name</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label>City</label>
+                            <InputText @bind-Value="BillingAddress.City" class="form-control" required placeholder="Sønderborg" />
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label>ZIP Code</label>
+                            <InputText @bind-Value="BillingAddress.ZipCode" class="form-control" required placeholder="6400" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card border-secondary mb-5">
+                    <div class="card-header bg-secondary border-0">
+                        <h4 class="font-weight-semi-bold m-0">Order Total</h4>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="font-weight-medium mb-3">Products</h5>
+                        @foreach (var basketItem in BasketItems)
+                        {
+                            <div class="d-flex justify-content-between">
+                                <p>@basketItem.Product.Name</p>
+                                <p>$@(basketItem.Product.Price * basketItem.QTY)</p>
+                            </div>
+                        }
+                        <hr class="mt-0">
+                        <div class="d-flex justify-content-between mb-3 pt-1">
+                            <h6 class="font-weight-medium">Subtotal</h6>
+                            <h6 class="font-weight-medium">$@basket.Total</h6>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <h6 class="font-weight-medium">Shipping</h6>
+                            <h6 class="font-weight-medium">$0</h6>
+                        </div>
+                    </div>
+                    <div class="card-footer border-secondary bg-transparent">
+                        <div class="d-flex justify-content-between mt-2">
+                            <h5 class="font-weight-bold">Total</h5>
+                            <h5 class="font-weight-bold">$@basket.Total</h5>
+                        </div>
+                    </div>
+                </div>
+                <div class="card border-secondary mb-5">
+                    <div class="card-header bg-secondary border-0">
+                        <h4 class="font-weight-semi-bold m-0">Payment</h4>
+                    </div>
+                    <div class="card-body">
+                        @*@foreach (var paymentProvider in PaymentProviders)
+                        {
+                            <div class="form-group">
+                                <div class="custom-control custom-radio">
+                                    <input type="radio" class="custom-control-input" id="payment-provider-@paymentProvider.Value" name="basket.PaymentProviderId" value="@paymentProvider.Value">
+                                    <label class="custom-control-label" for="payment-provider-@paymentProvider.Value">@paymentProvider.Text</label>
+                                </div>
+                            </div>
+                        }*@
+                    </div>
+                    <div class="card-footer border-secondary bg-transparent">
+                        <button type="submit" class="btn btn-lg btn-block btn-primary font-weight-bold my-3 py-3">Place Order</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </EditForm>
+</div>
+<!-- Checkout End -->
+
+@code {
+    public string LocalStorageBasketKey { get; set; } = "basketId";
+
+    public List<BasketItem> BasketItems { get; set; } = new List<BasketItem>();
+    public Basket basket { get; set; } = new Basket();
+
+    public List<CountryDTO> Countries { get; set; } = new List<CountryDTO>();
+
+    public AddressDTO BillingAddress { get; set; } = new AddressDTO();
+
+
+    private async Task HandleSubmit()
+    {
+        int billingAddressId = await CreateAddress();
+        Console.WriteLine(billingAddressId);
+        basket.BillingAddressId = BillingAddress.Id;
+        // There is a fk constraint issue, it is like the address record is not created before the update basket is ran?!
+        //await UpdateBasket();
+
+        toastService.ShowSuccess("Checkout susccess!");
+        if (await localStorage.ContainKeyAsync(LocalStorageBasketKey) != false)
+        {
+            await localStorage.RemoveItemAsync(LocalStorageBasketKey);
+        }
+        await UpdateCartCount();
+        Navigation.NavigateTo("/");
+    }
+
+    public async Task UpdateBasket()
+    {
+        var response = await _client.PutAsJsonAsync("basket", new List<Basket> { basket }.ToDTOs().FirstOrDefault());
+        var content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            toastService.ShowError("Error on Checkout: " + content);
+            throw new ApplicationException(content);
+        }
+    }
+
+    public async Task<int> CreateAddress()
+    {
+        var response = await _client.PostAsJsonAsync("address", BillingAddress);
+        var content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            toastService.ShowError("Error while trying to create address!");
+            throw new ApplicationException(content);
+        }
+        return JsonSerializer.Deserialize<int>(content);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        int? basketId = null;
+        if (await localStorage.ContainKeyAsync(LocalStorageBasketKey) == false)
+        {
+            Navigation.NavigateTo("/");
+        }
+        if (basketId == null)
+        {
+            basketId = (int?)(await localStorage.GetItemAsync<int>(LocalStorageBasketKey));
+        }
+        if (basketId == null)
+        {
+            Navigation.NavigateTo("/");
+        }
+        basket = await GetBasket((int)basketId);
+
+        BasketItems = await GetBasketItems(basket.Id);
+        Countries = await GetCountries();
+    }
+
+    public async Task<Basket> GetBasket(int id, string queryString = "")
+    {
+        var response = await _client.GetAsync("basket/" + id + "?" + queryString);
+        var content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new ApplicationException(content);
+        }
+        var item = JsonSerializer.Deserialize<Basket>(content, new JsonSerializerOptions
+            {
+                ReferenceHandler = ReferenceHandler.Preserve,
+                PropertyNameCaseInsensitive = true
+            });
+        return item != null ? item : new Basket();
+    }
+    
+    public async Task<List<CountryDTO>> GetCountries()
+    {
+        var response = await _client.GetAsync("countries");
+        var content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new ApplicationException(content);
+        }
+        var item = JsonSerializer.Deserialize<List<CountryDTO>>(content, new JsonSerializerOptions
+            {
+                ReferenceHandler = ReferenceHandler.Preserve,
+                PropertyNameCaseInsensitive = true
+            });
+        return item != null ? item : new List<CountryDTO>();
+    }
+
+    public async Task<List<BasketItem>> GetBasketItems(int basketId)
+    {
+        var response = await _client.GetAsync("basketitems?basketId=" + basketId);
+        var content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new ApplicationException(content);
+        }
+        var item = JsonSerializer.Deserialize<List<BasketItem>>(content, new JsonSerializerOptions
+            {
+                ReferenceHandler = ReferenceHandler.Preserve,
+                PropertyNameCaseInsensitive = true
+            });
+        return item != null ? item : new List<BasketItem>();
+    }
+
+    public async Task UpdateCartCount()
+    {
+        await JS.InvokeVoidAsync("updateCartCount", BasketItems.Count());
+    }
+}

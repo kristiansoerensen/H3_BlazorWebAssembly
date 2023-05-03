@@ -3,6 +3,8 @@
 @using System.Text.Json;
 @using System.Text.Json.Serialization;
 @inject Blazored.LocalStorage.ILocalStorageService localStorage
+@inject IJSRuntime JS
+
 
 <a @onclick="() => GoToCart()" class="btn border">
     <i class="fas fa-shopping-cart text-primary"></i>
