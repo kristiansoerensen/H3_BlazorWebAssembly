@@ -21,13 +21,8 @@
                 {
                     <div class="custom-control custom-checkbox d-flex align-items-center justify-content-between mb-3">
                         <Input type="checkbox" @onchange="() => UpdateSelectedCategories(cnt)" id="category-@cnt.value" class="custom-control-input" />
-                        @*else
-                        {
-                            <Input type="checkbox" @bind="CategoryIds" id="category-@cnt.value" @onchange="@(() => UpdateSelectedCategories(cnt))" class="custom-control-input" />
-                        }*@
                         <label class="custom-control-label" for="category-@cnt.value">@cnt.Text</label>
                     </div>
-                    @*<option value="@cnt.Id">@cnt.Name</option>*@
                 }
             </div>
             <!-- Price End -->
@@ -45,9 +40,6 @@
                                     <i class="fa fa-search"></i>
                                 </span>
                             </div>
-                        </div>
-                        <div class="dropdown ml-4">
-                            <select asp-for="CategoryIds" asp-items="Model.Categories" class="form-control form-select-multi" multiple="multiple" onchange="this.form.submit()"></select>
                         </div>
                         <div class="dropdown ml-4">
                             <select asp-for="OrderBy" asp-items="Model.OrderByList" class="form-control" onchange="this.form.submit()"></select>
